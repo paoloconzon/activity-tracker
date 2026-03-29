@@ -44,3 +44,15 @@ Interfaccia di consultazione e correzione storica per la tabella Attività.
 
 3. Integrazione Sviluppo (Visual Studio Code)
 Il progetto è configurato per lo sviluppo in VS Code, integrando il supporto AI per la generazione e il debugging dei sorgenti (PHP per la parte plugin/REST e JavaScript/Vue per la parte client).
+
+4. Come usare come plugin WordPress
+- Copia l'intera cartella `activity-tracker` in `wp-content/plugins/`.
+- Esegui `cd frontend && npm install && npm run build`.
+- Attiva il plugin da WP Admin > Plugin.
+- Nel menu laterale admin troverai "Activity Tracker".
+- La UI SPA sarà caricata su quella pagina in `<div id="app">`.
+
+5. Note sul deploy
+- Il JavaScript generato si trova in `frontend/dist` e viene registrato tramite `frontend/dist/manifest.json`.
+- Se vuoi aggiornare a REST API completa, aggiungi endpoint in `activity-tracker.php` sotto `register_rest_endpoints()`.
+

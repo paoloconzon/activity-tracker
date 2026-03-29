@@ -1,0 +1,55 @@
+============================================================
+PROJECT: WP-TimeFlow (Vue 3 + WordPress) - GIT CHEAT SHEET
+============================================================
+
+1. CONFIGURAZIONE INIZIALE (Una tantum)
+---------------------------------------
+Da eseguire per collegare la cartella locale a un nuovo repo GitHub.
+
+git init                                      # Inizializza Git
+git add .                                     # Prepara i file (Stage)
+git commit -m "Initial commit"                # Primo salvataggio locale
+git branch -M main                            # Rinomina il ramo in 'main'
+git remote add origin https://github.com/...  # Collega il repo remoto
+git push -u origin main                       # Invia e collega al server
+
+
+2. CICLO DI SVILUPPO FEATURE (Nuove Funzionalità)
+-------------------------------------------------
+Usa questo flusso per ogni modulo (es: feature/db-schema).
+
+git checkout -b feature/nome-feature          # Crea e sposta sul nuovo ramo
+git add .                                     # Stage delle modifiche
+git commit -m "WIP: descrizione"              # Salvataggio (Work In Progress)
+git push -u origin feature/nome-feature       # Pubblica il ramo su GitHub
+git push                                      # Push successivi sullo stesso ramo
+
+
+3. CHIUSURA E MERGE (Integrazione nel Main)
+-------------------------------------------
+Da eseguire quando la feature è completata.
+
+git checkout main                             # Torna sul ramo principale
+git pull origin main                          # Scarica aggiornamenti remoti
+git merge feature/nome-feature                # Unisce la feature nel main
+git push origin main                          # Invia tutto su GitHub
+git branch -d feature/nome-feature            # Elimina il ramo locale (opzionale)
+
+
+4. RISOLUZIONE ERRORI E COMANDI UTILI
+-------------------------------------
+git pull origin main --rebase                 # Risolve errore [rejected] allineando i commit
+git push origin main --force                  # Sovrascrive il server (ATTENZIONE)
+git status                                    # Verifica lo stato dei file e del branch
+git log --oneline                             # Mostra la cronologia sintetica
+
+
+5. GESTIONE VISUALE IN VS CODE (Senza Terminale)
+------------------------------------------------
+- CAMBIARE BRANCH: Clicca il nome del branch in basso a sinistra (Status Bar).
+- STAGE (ADD): Icona [+] accanto al file nel pannello "Source Control" (Ctrl+Shift+G).
+- COMMIT: Scrivi il messaggio nel box in "Source Control" e clicca "Commit".
+- SYNC (PUSH/PULL): Clicca il tasto "Sync Changes" o le frecce circolari in basso.
+- ESTENSIONE CONSIGLIATA: "Git Graph" per vedere la struttura ad albero dei branch.
+
+============================================================
