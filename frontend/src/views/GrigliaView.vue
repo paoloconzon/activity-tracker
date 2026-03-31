@@ -101,6 +101,7 @@
             <tr
               :class="['row-att', { 'row-in-corso': !att.ora_fine }]"
               :style="{ borderLeft: `3px solid ${coloreArgomento(att.id_argomento)}` }"
+              @dblclick="apriModificaRiga(att)"
             >
               <!-- Data -->
               <td class="cell-date">{{ formatData(att.ora_inizio) }}</td>
@@ -117,32 +118,23 @@
               <!-- Argomento (path) — inline edit -->
               <td class="cell-arg">
                 <template v-if="editArgId === att.id">
-                  <v-autocomplete
+                  <v-select
                     v-model="editArgValore"
-                    :items="argomentiStore.argomenti.filter(a => !a.seChiuso)"
-                    item-title="nome"
+                    :items="argomentiAlbero"
+                    item-title="nomeVisuale"
                     item-value="id"
                     variant="plain"
                     density="compact"
                     hide-details
                     autofocus
-                    auto-select-first
                     class="edit-field"
-                    @update:modelValue="salvaEditArg(att)"
-                    @blur="annullaEditArg"
+                    @change="salvaEditArg(att)"
                     @keyup.esc="annullaEditArg"
                   >
-                    <template #item="{ item, props }">
-                      <v-list-item v-bind="props">
-                        <template #prepend>
-                          <v-avatar :color="item.raw.colore" size="10" class="mr-2" />
-                        </template>
-                        <template #title>
-                          <span class="text-caption">{{ pathArgomento(item.raw.id).join(' / ') }}</span>
-                        </template>
-                      </v-list-item>
+                    <template #selection="{ item }">
+                      <span>{{ pathArgomento(item.id).join(' / ') }}</span>
                     </template>
-                  </v-autocomplete>
+                  </v-select>
                 </template>
                 <template v-else>
                   <div class="arg-path editable-cell" @click="avviaEditArg(att)" title="Clicca per modificare">
@@ -166,19 +158,17 @@
               <!-- Azione — inline edit -->
               <td class="cell-az">
                 <template v-if="editAzId === att.id">
-                  <v-autocomplete
+                  <v-select
                     v-model="editAzValore"
-                    :items="azioniStore.azioni"
+                    :items="azioniDisponibili"
                     item-title="azione"
                     item-value="id"
                     variant="plain"
                     density="compact"
                     hide-details
                     autofocus
-                    auto-select-first
                     class="edit-field"
-                    @update:modelValue="salvaEditAz(att)"
-                    @blur="annullaEditAz"
+                    @change="salvaEditAz(att)"
                     @keyup.esc="annullaEditAz"
                   />
                 </template>
@@ -196,31 +186,11 @@
                 </template>
               </td>
 
-              <!-- Descrizione — inline edit -->
+              <!-- Descrizione — readonly in tabella; modifica via doppio click -->
               <td class="cell-desc">
-                <template v-if="editDescId === att.id">
-                  <v-text-field
-                    v-model="editDescValore"
-                    variant="plain"
-                    density="compact"
-                    hide-details
-                    autofocus
-                    class="edit-field"
-                    @blur="salvaEditDesc(att)"
-                    @keyup.enter="salvaEditDesc(att)"
-                    @keyup.esc="annullaEditDesc"
-                  />
-                </template>
-                <template v-else>
-                  <span
-                    class="desc-text editable-cell"
-                    :class="{ 'desc-vuota': !att.descrizione }"
-                    @click="avviaEditDesc(att)"
-                    title="Clicca per modificare"
-                  >
-                    {{ att.descrizione || '—' }}
-                  </span>
-                </template>
+                <span class="desc-text" :class="{ 'desc-vuota': !descrizioneRadice(att) }">
+                  {{ descrizioneRadice(att) || '—' }}
+                </span>
               </td>
 
               <!-- Tasto elimina -->
@@ -248,6 +218,56 @@
 
       </table>
     </div>
+
+    <!-- Dialog modifica flag/note (doppio click) ───────────────────────── -->
+    <v-dialog v-model="dialogModificaRiga" max-width="500">
+      <v-card rounded="xl" v-if="attivitaInModifica">
+        <v-card-title class="text-h6 pa-4">Modifica Flag/Note attività #{{ attivitaInModifica.id }}</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="attivitaInModifica.descrizione"
+            label="Descrizione (modifica radice)"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+          <v-text-field
+            v-model="attivitaInModifica.flag1"
+            label="Flag 1"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+          <v-text-field
+            v-model="attivitaInModifica.flag2"
+            label="Flag 2"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+          <v-text-field
+            v-model="attivitaInModifica.flag3"
+            label="Flag 3"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+          <v-textarea
+            v-model="attivitaInModifica.note"
+            label="Note"
+            variant="outlined"
+            density="compact"
+            rows="3"
+            auto-grow
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="{ dialogModificaRiga = false; attivitaInModifica = null }">Annulla</v-btn>
+          <v-btn color="primary" variant="flat" @click="salvaModificaRiga">Salva</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- Dialog conferma eliminazione ───────────────────────── -->
     <v-dialog v-model="dialogElimina" max-width="360">
@@ -334,6 +354,11 @@ function totaleGiorno(giorno) {
   return formatDurataTot(min)
 }
 
+function descrizioneRadice(att) {
+  const root = attivitaStore.trovaRadice(att)
+  return root?.descrizione || ''
+}
+
 // ── Path argomento ──────────────────────────────────────────
 function pathArgomento(id) {
   const path = []
@@ -353,6 +378,34 @@ function coloreArgomento(id) {
 function nomeAzione(id) {
   return azioniStore.azioni.find(a => a.id === id)?.azione ?? `#${id}`
 }
+
+const argomentiDisponibili = computed(() =>
+  argomentiStore.argomenti.filter(a => !a.seChiuso)
+)
+
+const azioniDisponibili = computed(() =>
+  azioniStore.azioni
+)
+
+const argomentiAlbero = computed(() => {
+  const orig = argomentiDisponibili.value
+  const sorted = [...orig].sort((a, b) => a.nome.localeCompare(b.nome, 'it'))
+
+  const build = (idPadre, depth) => {
+    return sorted
+      .filter(a => (idPadre === null ? !a.id_padre : a.id_padre === idPadre))
+      .flatMap(a => [
+        {
+          ...a,
+          depth,
+          nomeVisuale: `${'\u00A0'.repeat(depth * 3)}${a.nome}`,
+        },
+        ...build(a.id, depth + 1),
+      ])
+  }
+
+  return build(null, 0)
+})
 
 // ── Formato date ────────────────────────────────────────────
 function giornoOf(att) { return att.ora_inizio.slice(0, 10) }
@@ -388,8 +441,9 @@ function avviaEditArg(att) {
   editArgValore.value = att.id_argomento
 }
 function salvaEditArg(att) {
-  if (editArgValore.value && editArgValore.value !== att.id_argomento) {
-    attivitaStore.aggiornaStorico(att.id, { id_argomento: editArgValore.value })
+  const selezione = argomentiDisponibili.value.find(a => a.id === editArgValore.value)
+  if (selezione && selezione.id !== att.id_argomento) {
+    attivitaStore.aggiornaStorico(att.id, { id_argomento: selezione.id })
   }
   annullaEditArg()
 }
@@ -407,8 +461,9 @@ function avviaEditAz(att) {
   editAzValore.value = att.id_azione
 }
 function salvaEditAz(att) {
-  if (editAzValore.value && editAzValore.value !== att.id_azione) {
-    attivitaStore.aggiornaStorico(att.id, { id_azione: editAzValore.value })
+  const selezione = azioniDisponibili.value.find(a => a.id === editAzValore.value)
+  if (selezione && selezione.id !== att.id_azione) {
+    attivitaStore.aggiornaStorico(att.id, { id_azione: selezione.id })
   }
   annullaEditAz()
 }
@@ -417,26 +472,11 @@ function annullaEditAz() {
   editAzValore.value = null
 }
 
-// ── Edit inline: DESCRIZIONE ────────────────────────────────
-const editDescId     = ref(null)
-const editDescValore = ref('')
-
-function avviaEditDesc(att) {
-  editDescId.value     = att.id
-  editDescValore.value = att.descrizione || ''
-}
-function salvaEditDesc(att) {
-  attivitaStore.aggiornaStorico(att.id, { descrizione: editDescValore.value })
-  annullaEditDesc()
-}
-function annullaEditDesc() {
-  editDescId.value     = null
-  editDescValore.value = ''
-}
-
 // ── Elimina ─────────────────────────────────────────────────
 const dialogElimina       = ref(false)
 const attivitaDaEliminare = ref(null)
+const dialogModificaRiga  = ref(false)
+const attivitaInModifica  = ref(null)
 
 function chiediElimina(att) {
   attivitaDaEliminare.value = att
@@ -447,6 +487,34 @@ function confermaElimina() {
     attivitaStore.eliminaDaStorico(attivitaDaEliminare.value.id)
   dialogElimina.value = false
   attivitaDaEliminare.value = null
+}
+
+function apriModificaRiga(att) {
+  attivitaInModifica.value = { ...att }
+  dialogModificaRiga.value = true
+}
+
+function salvaModificaRiga() {
+  if (!attivitaInModifica.value) return
+
+  // Salva flags/note sull'attività selezionata
+  attivitaStore.aggiornaStorico(attivitaInModifica.value.id, {
+    flag1: attivitaInModifica.value.flag1 || '',
+    flag2: attivitaInModifica.value.flag2 || '',
+    flag3: attivitaInModifica.value.flag3 || '',
+    note: attivitaInModifica.value.note || '',
+  })
+
+  // Salva descrizione solo sull'attività radice della catena
+  const root = attivitaStore.trovaRadice(attivitaInModifica.value)
+  if (root) {
+    attivitaStore.aggiornaStorico(root.id, {
+      descrizione: attivitaInModifica.value.descrizione || root.descrizione || '',
+    })
+  }
+
+  dialogModificaRiga.value = false
+  attivitaInModifica.value = null
 }
 
 // ── Mount ───────────────────────────────────────────────────

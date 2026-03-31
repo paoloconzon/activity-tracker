@@ -64,28 +64,13 @@
         >
           {{ store.durataFormattata }}
         </div>
-        <div class="text-caption text-grey mb-4">
+        <div class="text-caption text-grey mb-3">
           Iniziata alle {{ oraInizio }}
         </div>
 
-        <!-- Campo descrizione ──────────────────────────── -->
-        <v-textarea
-          v-model="descrizione"
-          label="Descrizione (opzionale)"
-          variant="outlined"
-          density="compact"
-          rows="2"
-          auto-grow
-          hide-details
-          class="mb-4 text-left"
-          @update:model-value="store.aggiornaDescrizione($event)"
-        />
-
         <!-- Azioni ─────────────────────────────────────── -->
-        <v-row dense>
-
-          <!-- Pausa / Riprendi -->
-          <v-col cols="6">
+        <v-row dense class="mb-4">
+          <v-col cols="4">
             <v-btn
               v-if="!store.inPausa"
               color="orange"
@@ -107,9 +92,7 @@
               Riprendi
             </v-btn>
           </v-col>
-
-          <!-- Chiudi -->
-          <v-col cols="6">
+          <v-col cols="4">
             <v-btn
               color="error"
               variant="outlined"
@@ -120,8 +103,57 @@
               Chiudi
             </v-btn>
           </v-col>
-
         </v-row>
+
+        <!-- Campo descrizione ──────────────────────────── -->
+        <v-textarea
+          v-model="descrizione"
+          label="Descrizione (opzionale, radice)"
+          variant="outlined"
+          density="compact"
+          rows="2"
+          auto-grow
+          hide-details
+          class="mb-3 text-left"
+          @update:model-value="store.aggiornaDescrizione($event)"
+        />
+
+        <v-text-field
+          v-model="flag1"
+          label="Flag 1"
+          variant="outlined"
+          density="compact"
+          class="mb-2"
+          @update:model-value="store.aggiornaFlag1($event)"
+        />
+        <v-text-field
+          v-model="flag2"
+          label="Flag 2"
+          variant="outlined"
+          density="compact"
+          class="mb-2"
+          @update:model-value="store.aggiornaFlag2($event)"
+        />
+        <v-text-field
+          v-model="flag3"
+          label="Flag 3"
+          variant="outlined"
+          density="compact"
+          class="mb-4"
+          @update:model-value="store.aggiornaFlag3($event)"
+        />
+
+        <v-textarea
+          v-model="note"
+          label="Note (solo attività corrente)"
+          variant="outlined"
+          density="compact"
+          rows="2"
+          auto-grow
+          hide-details
+          class="mb-4 text-left"
+          @update:model-value="store.aggiornaNote($event)"
+        />
 
       </v-card>
 
@@ -151,11 +183,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAttivitaStore } from '../stores/attivita.js'
 import { useArgomentiStore } from '../stores/argomenti.js'
-import { attivitaDb, argomentiDb, azioniDb } from '../db/localStorage.js'
+import { argomentiDb, azioniDb } from '../db/localStorage.js'
 
 const router = useRouter()
 const store = useAttivitaStore()
@@ -164,6 +196,10 @@ const argomentiStore = useArgomentiStore()
 // Stato locale
 const chiudiDialog = ref(false)
 const descrizione = ref('')
+const flag1 = ref('')
+const flag2 = ref('')
+const flag3 = ref('')
+const note = ref('')
 
 // Salva i dati dell'attività pre-pausa per poterla riprendere
 const attivitaPrePausa = ref(null)
@@ -177,11 +213,16 @@ const oraInizio = computed(() => {
   })
 })
 
-// Sincronizza il campo descrizione con l'attività corrente
+// Sincronizza i campi con l'attività corrente
 watch(
   () => store.corrente,
   (val) => {
-    descrizione.value = val?.descrizione ?? ''
+    const root = store.trovaRadice?.(val) || val
+    descrizione.value = root?.descrizione ?? ''
+    flag1.value = val?.flag1 || ''
+    flag2.value = val?.flag2 || ''
+    flag3.value = val?.flag3 || ''
+    note.value = val?.note || ''
   },
   { immediate: true }
 )
@@ -222,7 +263,7 @@ function riprendiDaPausa() {
   }
   const precedente = JSON.parse(raw)
   sessionStorage.removeItem('attivita_pre_pausa')
-  store.riprendiDaPausa(precedente.id_argomento, precedente.id_azione)
+  store.riprendiDaPausa(precedente)
 }
 </script>
 

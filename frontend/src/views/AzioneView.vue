@@ -23,10 +23,16 @@
       </v-btn>
     </v-alert>
 
-    <h2 class="text-h6 mb-4 text-grey-darken-2">
-      <v-icon class="mr-1">mdi-lightning-bolt</v-icon>
-      Che tipo di attività stai svolgendo?
-    </h2>
+    <div class="d-flex align-center mb-3">
+      <h2 class="text-h6 mb-0 text-grey-darken-2">
+        <v-icon class="mr-1">mdi-lightning-bolt</v-icon>
+        Che tipo di attività stai svolgendo?
+      </h2>
+      <v-spacer />
+      <v-btn small variant="tonal" @click="apriCreaAzione">
+        <v-icon left>mdi-plus</v-icon>Nuova azione
+      </v-btn>
+    </div>
 
     <!-- Tiles delle azioni -->
     <v-row>
@@ -59,6 +65,18 @@
           >
             {{ azione.azione }}
           </div>
+          <div class="text-caption mt-2" :class="azioneScelta?.id === azione.id ? 'text-white' : 'text-grey-darken-2'">
+            {{ azione.flag1 }} {{ azione.flag2 }} {{ azione.flag3 }}
+          </div>
+          <v-btn
+            icon
+            small
+            class="mt-2"
+            :color="azioneScelta?.id === azione.id ? 'white' : 'primary'"
+            @click.stop="apriModificaAzione(azione)"
+          >
+            <v-icon size="16">mdi-pencil-outline</v-icon>
+          </v-btn>
         </v-card>
       </v-col>
     </v-row>
@@ -75,6 +93,33 @@
     >
       Avvia: {{ argomentoScelto.nome }} · {{ azioneScelta.azione }}
     </v-btn>
+
+    <v-dialog v-model="dialogAzione" max-width="480">
+      <v-card rounded="xl">
+        <v-card-title class="pa-4 text-h6">
+          {{ azioneInEdit ? 'Modifica azione' : 'Nuova azione' }}
+        </v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="azioneForm.azione"
+            label="Azione"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+          <v-text-field v-model="azioneForm.flag1" label="Flag 1" variant="outlined" density="compact" class="mb-3" />
+          <v-text-field v-model="azioneForm.flag2" label="Flag 2" variant="outlined" density="compact" class="mb-3" />
+          <v-text-field v-model="azioneForm.flag3" label="Flag 3" variant="outlined" density="compact" />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="dialogAzione = false">Annulla</v-btn>
+          <v-btn color="primary" variant="flat" :disabled="!azioneForm.azione.trim()" @click="salvaAzione">
+            Salva
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
   </v-container>
 </template>
@@ -97,6 +142,48 @@ const argomentoScelto = ref(null)
 // L'azione selezionata dall'utente in questa view
 const azioneScelta = ref(null)
 
+const dialogAzione = ref(false)
+const azioneInEdit = ref(null)
+const azioneForm = ref({ azione: '', flag1: '', flag2: '', flag3: '' })
+
+function apriCreaAzione() {
+  azioneInEdit.value = null
+  azioneForm.value = { azione: '', flag1: '', flag2: '', flag3: '' }
+  dialogAzione.value = true
+}
+
+function apriModificaAzione(azione) {
+  azioneInEdit.value = azione
+  azioneForm.value = {
+    azione: azione.azione,
+    flag1: azione.flag1 || '',
+    flag2: azione.flag2 || '',
+    flag3: azione.flag3 || '',
+  }
+  dialogAzione.value = true
+}
+
+function salvaAzione() {
+  if (!azioneForm.value.azione.trim()) return
+
+  if (azioneInEdit.value) {
+    azioniStore.aggiorna(azioneInEdit.value.id, {
+      azione: azioneForm.value.azione.trim(),
+      flag1: azioneForm.value.flag1,
+      flag2: azioneForm.value.flag2,
+      flag3: azioneForm.value.flag3,
+    })
+  } else {
+    azioniStore.crea({
+      azione: azioneForm.value.azione.trim(),
+      flag1: azioneForm.value.flag1,
+      flag2: azioneForm.value.flag2,
+      flag3: azioneForm.value.flag3,
+    })
+  }
+  dialogAzione.value = false
+}
+
 onMounted(() => {
   const raw = sessionStorage.getItem('argomento_scelto')
   if (!raw) {
@@ -114,6 +201,9 @@ function conferma() {
   attivitaStore.avvia({
     id_argomento: argomentoScelto.value.id,
     id_azione: azioneScelta.value.id,
+    flag1: azioneScelta.value.flag1 || '',
+    flag2: azioneScelta.value.flag2 || '',
+    flag3: azioneScelta.value.flag3 || '',
   })
 
   // Pulisce la sessione e reimposta la navigazione argomenti

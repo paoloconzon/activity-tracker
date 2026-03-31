@@ -104,9 +104,15 @@ export const azioniDb = {
     return leggi('at_azioni').find(a => a.id === id) || null
   },
 
-  crea({ azione }) {
+  crea({ azione, flag1 = '', flag2 = '', flag3 = '' }) {
     const lista = leggi('at_azioni')
-    const nuovo = { id: nuovoId('azioni'), azione }
+    const nuovo = {
+      id: nuovoId('azioni'),
+      azione,
+      flag1,
+      flag2,
+      flag3,
+    }
     lista.push(nuovo)
     scrivi('at_azioni', lista)
     return nuovo
@@ -150,7 +156,7 @@ export const attivitaDb = {
   // Avvia una nuova attività:
   // 1. Chiude quella in corso (se esiste) valorizzando ora_fine
   // 2. Crea la nuova con ora_inizio = adesso
-  avvia({ id_argomento, id_azione, descrizione = '', note = '' }) {
+  avvia({ id_argomento, id_azione, id_prev = null, descrizione = '', note = '', flag1 = '', flag2 = '', flag3 = '' }) {
     const lista = leggi('at_attivita')
     const adesso = new Date().toISOString()
 
@@ -165,10 +171,14 @@ export const attivitaDb = {
       id: nuovoId('attivita'),
       id_argomento,
       id_azione,
+      id_prev,
       ora_inizio: adesso,
       ora_fine: null,
       descrizione,
       note,
+      flag1,
+      flag2,
+      flag3,
     }
     lista.push(nuova)
     scrivi('at_attivita', lista)

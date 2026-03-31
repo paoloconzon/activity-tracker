@@ -15,6 +15,20 @@
       Storico attività
     </h2>
 
+    <v-row class="mb-3" align="center">
+      <v-col cols="12" sm="6">
+        <v-switch
+          v-model="raggruppate"
+          label="Mostra come attività raggruppate"
+          inset
+          density="compact"
+        />
+      </v-col>
+      <v-col cols="12" sm="6" class="text-right">
+        <span class="text-caption text-grey">{{ raggruppate ? 'In visualizzazione aggregata' : 'In visualizzazione dettagliata' }}</span>
+      </v-col>
+    </v-row>
+
     <!-- Nessuna attività -->
     <v-alert v-if="store.storico.length === 0" type="info" variant="tonal">
       Nessuna attività registrata ancora.
@@ -22,7 +36,7 @@
 
     <!-- Lista attività -->
     <v-card
-      v-for="att in store.storico"
+      v-for="att in attivitaMostrate"
       :key="att.id"
       class="mb-3"
       rounded="lg"
@@ -51,17 +65,22 @@
       <v-card-text class="pa-3">
         <!-- Orari -->
         <div class="text-caption text-grey mb-1">
-          {{ formatOra(att.ora_inizio) }}
-          →
-          {{ att.ora_fine ? formatOra(att.ora_fine) : 'in corso' }}
-          <span v-if="att.ora_fine" class="ml-2">
-            ({{ durata(att.ora_inizio, att.ora_fine) }})
-          </span>
+          <template v-if="!raggruppate">
+            {{ formatOra(att.ora_inizio) }} → {{ att.ora_fine ? formatOra(att.ora_fine) : 'in corso' }}
+            <span v-if="att.ora_fine" class="ml-2">({{ durata(att.ora_inizio, att.ora_fine) }})</span>
+          </template>
+          <template v-else>
+            {{ att.segmentCount }} segmenti · {{ formatDurataMinuti(att.durataTot) }}
+            <span v-if="att.inCorso" class="ml-2">(in corso)</span>
+          </template>
         </div>
 
         <!-- Descrizione (se presente) -->
         <div v-if="att.descrizione" class="text-body-2 mb-1">
           {{ att.descrizione }}
+        </div>
+        <div v-if="att.flag1 || att.flag2 || att.flag3" class="text-caption text-grey mb-1">
+          Flag: {{ att.flag1 || '-'}} {{ att.flag2 || '-'}} {{ att.flag3 || '-'}}
         </div>
         <div v-if="att.note" class="text-caption text-grey">
           Note: {{ att.note }}
@@ -69,6 +88,14 @@
       </v-card-text>
 
       <v-card-actions class="pa-2 pt-0">
+        <v-btn
+          size="small"
+          variant="text"
+          prepend-icon="mdi-play"
+          @click="riprendiStorico(att)"
+        >
+          Riprendi
+        </v-btn>
         <v-btn
           size="small"
           variant="text"
@@ -128,6 +155,27 @@
             density="compact"
             rows="2"
             auto-grow
+            class="mb-3"
+          />
+          <v-text-field
+            v-model="attivitaInEdit.flag1"
+            label="Flag 1"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+          <v-text-field
+            v-model="attivitaInEdit.flag2"
+            label="Flag 2"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+          <v-text-field
+            v-model="attivitaInEdit.flag3"
+            label="Flag 3"
+            variant="outlined"
+            density="compact"
           />
         </v-card-text>
         <v-card-actions>
@@ -155,14 +203,65 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAttivitaStore } from '../stores/attivita.js'
 import { useArgomentiStore } from '../stores/argomenti.js'
 import { useAzioniStore } from '../stores/azioni.js'
 
+const router = useRouter()
 const store = useAttivitaStore()
 const argomentiStore = useArgomentiStore()
 const azioniStore = useAzioniStore()
+
+const raggruppate = ref(true)
+
+const storicoRaggruppato = computed(() => {
+  const map = new Map()
+
+  const durationOf = (a) => a.ora_fine ? Math.floor((new Date(a.ora_fine) - new Date(a.ora_inizio)) / 60000) : 0
+
+  const getRoot = (att) => {
+    const r = store.trovaRadice(att)
+    return r || att
+  }
+
+  const ordered = [...store.storico].sort((a, b) => new Date(b.ora_inizio) - new Date(a.ora_inizio))
+
+  ordered.forEach(att => {
+    const root = getRoot(att)
+    const rootId = root.id
+    if (!map.has(rootId)) {
+      map.set(rootId, {
+        ...root,
+        durataTot: 0,
+        segmentCount: 0,
+        inCorso: false,
+      })
+    }
+    const group = map.get(rootId)
+    group.durataTot += durationOf(att)
+    group.segmentCount += 1
+    if (!att.ora_fine) group.inCorso = true
+  })
+
+  return Array.from(map.values())
+})
+
+const attivitaMostrate = computed(() => {
+  if (raggruppate.value) return storicoRaggruppato.value
+
+  return store.storico.map(att => {
+    const root = store.trovaRadice(att) || att
+    return {
+      ...att,
+      descrizione: root.descrizione || '',
+      flag1: root.flag1 || '',
+      flag2: root.flag2 || '',
+      flag3: root.flag3 || '',
+    }
+  })
+})
 
 // Dialog state
 const dialogModifica = ref(false)
@@ -203,7 +302,12 @@ function durata(inizio, fine) {
   if (h > 0) return `${h}h ${m}m`
   return `${m}m`
 }
-
+function formatDurataMinuti(minuti) {
+  const h = Math.floor(minuti / 60)
+  const m = minuti % 60
+  if (h > 0) return `${h}h ${m}m`
+  return `${m}m`
+}
 // ── CRUD ──────────────────────────────────────────────────
 
 function apriModifica(att) {
@@ -218,12 +322,30 @@ function apriModifica(att) {
 
 function salvaModifica() {
   const { id, ...campi } = attivitaInEdit.value
-  // Riconverte datetime-local → ISO
-  store.aggiornaStorico(id, {
+
+  const aggiornaDati = {
     ...campi,
     ora_inizio: new Date(campi.ora_inizio).toISOString(),
     ora_fine: campi.ora_fine ? new Date(campi.ora_fine).toISOString() : null,
-  })
+    flag1: campi.flag1 || '',
+    flag2: campi.flag2 || '',
+    flag3: campi.flag3 || '',
+  }
+
+  // Salva l'attività modificata
+  store.aggiornaStorico(id, aggiornaDati)
+
+  // Aggiorna bien radice descrizione/flag (visualizza solo root in storico)
+  const root = store.trovaRadice(store.storico.find(a => a.id === id))
+  if (root) {
+    store.aggiornaStorico(root.id, {
+      descrizione: campi.descrizione || root.descrizione || '',
+      flag1: campi.flag1 || root.flag1 || '',
+      flag2: campi.flag2 || root.flag2 || '',
+      flag3: campi.flag3 || root.flag3 || '',
+    })
+  }
+
   dialogModifica.value = false
 }
 
@@ -235,6 +357,12 @@ function eliminaConferma(att) {
 function eseguiElimina() {
   store.eliminaDaStorico(attivitaDaEliminare.value.id)
   dialogElimina.value = false
+}
+
+function riprendiStorico(att) {
+  const attDaRiprendere = raggruppate.value ? store.trovaRadice(att) : att
+  store.riprendiDaStorico(attDaRiprendere)
+  router.push('/attiva')
 }
 
 // Converte ISO string in formato compatibile con <input type="datetime-local">

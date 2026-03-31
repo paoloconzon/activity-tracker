@@ -12,6 +12,8 @@
 
 defined('ABSPATH') || exit;
 
+require_once plugin_dir_path(__FILE__) . 'rest.php';
+
 final class Activity_Tracker_Plugin {
     private const MENU_SLUG = 'activity-tracker';
     private bool $enqueue_assets_for_shortcode = false;

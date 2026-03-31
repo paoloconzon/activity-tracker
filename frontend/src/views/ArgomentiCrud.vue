@@ -26,11 +26,27 @@
       </v-btn>
     </div>
 
+    <v-row class="mb-3" align="center">
+      <v-col cols="12" sm="6">
+        <v-switch
+          v-model="mostraSoloAperti"
+          label="Mostra solo aperti"
+          inset
+          density="compact"
+        />
+      </v-col>
+      <v-col cols="12" sm="6" class="text-right">
+        <span class="text-caption text-grey">
+          {{ chiusiCount }} argomenti chiusi nascosti
+        </span>
+      </v-col>
+    </v-row>
+
     <!-- Albero argomenti (renderizza solo le radici, i figli vengono annidati) -->
     <template v-for="arg in radici" :key="arg.id">
       <ArgomentoNodo
         :argomento="arg"
-        :tutti="store.argomenti"
+        :tutti="argomentiFiltrati"
         @modifica="apriModifica"
         @elimina="eliminaConferma"
         @crea-figlio="apriCrea"
@@ -160,15 +176,25 @@ const coloriPreset = [
   '#7B1FA2', '#0097A7', '#5D4037', '#455A64',
 ]
 
+const mostraSoloAperti = ref(true)
+
 // ── Computed ──────────────────────────────────────────────
 
+const argomentiFiltrati = computed(() =>
+  store.argomenti.filter(a => !mostraSoloAperti.value || !a.seChiuso)
+)
+
+const chiusiCount = computed(() =>
+  store.argomenti.filter(a => a.seChiuso).length
+)
+
 const radici = computed(() =>
-  store.argomenti.filter(a => !a.id_padre)
+  argomentiFiltrati.value.filter(a => !a.id_padre)
 )
 
 // Opzioni per la select del padre (tutti gli argomenti tranne l'argomento stesso)
 const opzioniPadre = computed(() =>
-  store.argomenti.filter(a => a.id !== editando.value)
+  argomentiFiltrati.value.filter(a => a.id !== editando.value)
 )
 
 // ── Azioni ────────────────────────────────────────────────
